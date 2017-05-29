@@ -7,6 +7,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.jsoup.Jsoup;
@@ -18,7 +19,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -31,9 +31,9 @@ public class Login {
     public static void main(String[] args) throws  IOException {
         Login login = new Login();
         login.post("Claudius", "9876543211");  //提交表单进行登录
-        FindComent findComent = new FindComent(login.httpClient,1665230,182944);
+        FindComent findComent = new FindComent(login.httpClient,1652425,182944,"data.txt");
         ExecutorService pool = Executors.newFixedThreadPool(3);
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 4; i++) {
             pool.execute(new FindOutTheBadMan(findComent));
         }
         pool.shutdown();
@@ -41,7 +41,10 @@ public class Login {
 
 
     public Login() {
-        httpClient = HttpClients.createDefault();
+        PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
+        cm.setMaxTotal(200);
+        cm.setDefaultMaxPerRoute(20);
+        httpClient = HttpClients.custom().setConnectionManager(cm).build();
     }
 
     /**

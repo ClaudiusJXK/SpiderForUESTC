@@ -1,15 +1,21 @@
 import org.apache.http.HttpEntity;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.util.EntityUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import javax.lang.model.element.NestingKind;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.SocketTimeoutException;
 
 /**
  * Created by Claudius on 2017/5/28.
@@ -21,18 +27,21 @@ public class FindComent {
     private String commentUrlSuf;
     private String commentUrlMid;
     private PrintWriter out;
+    private RequestConfig requestConfig;
+
     private int tid;
     private int uid;
 
-    public FindComent(CloseableHttpClient httpClient, int tid, int uid) throws IOException {
+    public FindComent(CloseableHttpClient httpClient, int tid, int uid , String file) throws IOException {
         this.httpClient = httpClient;
         this.url = "http://bbs.uestc.edu.cn/forum.php?mod=viewthread&tid=";
         this.commentUrlPre = "http://bbs.uestc.edu.cn/forum.php?mod=misc&action=commentmore&tid=1&pid=";
         this.commentUrlMid = "&page=";
         this.commentUrlSuf = "&inajax=1&ajaxtarget=comment";
-        this.out = new PrintWriter("F:\\masterSpring\\riverside\\data.txt");
+        this.out = new PrintWriter(new BufferedWriter(new FileWriter(file,true)));
         this.tid = tid;
         this.uid = uid;
+        this.requestConfig = RequestConfig.custom().setSocketTimeout(5000).setConnectTimeout(5000).build();
     }
 
 
@@ -90,6 +99,7 @@ public class FindComent {
             return  result;
         String commentUrl = commentUrlPre + commentId + commentUrlMid + page + commentUrlSuf;
         HttpGet httpGet = new HttpGet(commentUrl);
+        httpGet.setConfig(requestConfig);
         try {
 
             CloseableHttpResponse httpResponse = httpClient.execute(httpGet);
@@ -110,10 +120,11 @@ public class FindComent {
                 Document document = Jsoup.parse(response);
                 Elements elements = document.getElementsByClass("psti");
                 for (Element element : elements) {
-                    if (element.toString().contains(uid + ""))
+                    if (element.toString().contains(uid + "")){
                         System.out.print(element.text());
-                    System.out.print(element.text());
-                    output(url + tid + "   " + element.text());
+                        output(url + tid + "   " + element.text());
+                    }
+
                 }
             } finally {
                 httpResponse.close();
@@ -138,5 +149,9 @@ public class FindComent {
 
     public int getTid(){
         return  tid;
+    }
+
+    public void close(){
+        out.close();
     }
 }
