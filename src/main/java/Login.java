@@ -18,6 +18,9 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Created by Claudius on 2017/5/27.
@@ -28,9 +31,12 @@ public class Login {
     public static void main(String[] args) throws  IOException {
         Login login = new Login();
         login.post("Claudius", "9876543211");  //提交表单进行登录
-        FindComent findComent = new FindComent(login.httpClient,1665311,1);
-        findComent.findLoop();
-        login.shoutDown();
+        FindComent findComent = new FindComent(login.httpClient,1665230,182944);
+        ExecutorService pool = Executors.newFixedThreadPool(3);
+        for (int i = 0; i < 3; i++) {
+            pool.execute(new FindOutTheBadMan(findComent));
+        }
+        pool.shutdown();
     }
 
 

@@ -53,7 +53,16 @@ public class FindComent {
                 String response = EntityUtils.toString(httpEntity);
                 Document document = Jsoup.parse(response);
                 Elements elements = document.getElementsByClass("authicn");
-                return elements.get(0).attr("id").substring(8);
+                if (elements.size() != 0){
+                    Element element = elements.get(0);
+                    if (element != null) {
+                        String id = element.attr("id");
+                        if ( id != null)
+                            return  id.substring(8);
+                    }
+
+                }
+
             } finally {
                 httpResponse.close();
             }
@@ -65,17 +74,20 @@ public class FindComent {
     }
 
 
-
+    //循环每一页的评论
     public void findLoop(int tid) {
         int page = 1;
         while (findCommentByUid( tid ,page))
             page++;
+        System.out.println(tid);
     }
 
     //根据commentId，进行ajaxget，按点评页数查找数据。
     public boolean findCommentByUid( int tid ,int page ) {
         boolean result = false;
         String commentId = findCommentIdByTid(tid);
+        if (commentId == null)
+            return  result;
         String commentUrl = commentUrlPre + commentId + commentUrlMid + page + commentUrlSuf;
         HttpGet httpGet = new HttpGet(commentUrl);
         try {
@@ -122,5 +134,9 @@ public class FindComent {
     public synchronized int reduce() {
         this.tid--;
         return  this.tid + 1;
+    }
+
+    public int getTid(){
+        return  tid;
     }
 }
