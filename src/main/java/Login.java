@@ -25,11 +25,12 @@ import java.util.List;
 public class Login {
     private CloseableHttpClient httpClient;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws  IOException {
         Login login = new Login();
         login.post("Claudius", "9876543211");  //提交表单进行登录
-        login.testLogin();                                         //检测登陆是否成功
-        login.shoutDown();                                          //关闭httpclient
+        FindComent findComent = new FindComent(login.httpClient,1665311,1);
+        findComent.findLoop();
+        login.shoutDown();
     }
 
 
@@ -55,8 +56,12 @@ public class Login {
         HttpGet httpGet = new HttpGet("http://bbs.uestc.edu.cn/forum.php?mod=viewthread&tid=1665256");
         try {
             CloseableHttpResponse httpResponse = httpClient.execute(httpGet);
-            HttpEntity entity = httpResponse.getEntity();
-            System.out.print(EntityUtils.toString(entity));
+            try {
+                HttpEntity entity = httpResponse.getEntity();
+                System.out.print(EntityUtils.toString(entity));
+            }finally {
+                httpResponse.close();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
