@@ -1,6 +1,8 @@
 /**
  * Created by Claudius on 2017/5/29.
+ * 用来执行的线程类
  */
+
 public class FindOutTheBadMan implements  Runnable {
     private  FindComent findComent;
     public  FindOutTheBadMan (FindComent findComent){
