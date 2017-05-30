@@ -32,6 +32,14 @@ public class FindComent {
     private int tid;
     private int uid;
 
+    /**
+     *
+     * @param httpClient   保存有cookie信息的httpclient
+     * @param tid          从tid开始往后查找
+     * @param uid          需要查找的uid
+     * @param file         保存的文件
+     * @throws IOException
+     */
     public FindComent(CloseableHttpClient httpClient, int tid, int uid , String file) throws IOException {
         this.httpClient = httpClient;
         this.url = "http://bbs.uestc.edu.cn/forum.php?mod=viewthread&tid=";
@@ -45,7 +53,11 @@ public class FindComent {
     }
 
 
-    //找到当前页面的commentId
+    /**
+     * 根据帖子tid，找到该主题帖的commentId
+     * @param tid
+     * @return
+     */
     public String findCommentIdByTid(int tid) {
         HttpGet httpGet = new HttpGet(url + tid);
         httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; rv:6.0.2) Gecko/20100101 Firefox/6.0.2");
@@ -83,20 +95,28 @@ public class FindComent {
     }
 
 
-    //循环每一页的评论
+    /**
+     * 如果有多页点评，则循环
+     * @param tid
+     */
     public void findLoop(int tid) {
         int page = 1;
-        while (findCommentByUid( tid ,page))
+        String commentId = findCommentIdByTid(tid);
+        if (commentId == null)
+            return;
+        while (findCommentByUid( commentId,tid ,page))
             page++;
         System.out.println(tid);
     }
 
-    //根据commentId，进行ajaxget，按点评页数查找数据。
-    public boolean findCommentByUid( int tid ,int page ) {
+    /**
+     * 如果返回true，则还有下一页点评。
+     * @param tid
+     * @param page   第几页点评
+     * @return
+     */
+    public boolean findCommentByUid( String commentId ,int tid ,int page ) {
         boolean result = false;
-        String commentId = findCommentIdByTid(tid);
-        if (commentId == null)
-            return  result;
         String commentUrl = commentUrlPre + commentId + commentUrlMid + page + commentUrlSuf;
         HttpGet httpGet = new HttpGet(commentUrl);
         httpGet.setConfig(requestConfig);
