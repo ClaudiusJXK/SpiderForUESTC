@@ -1,10 +1,12 @@
 import org.apache.http.HttpEntity;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.params.HttpClientParams;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
@@ -28,14 +30,14 @@ import java.util.concurrent.Executors;
 public class Login {
     private CloseableHttpClient httpClient;
 
-    public static void main(String[] args) throws  IOException,InterruptedException{
+    public static void main(String[] args) throws IOException, InterruptedException {
         Login login = new Login();
-        login.post("Claudius", "9876543211");  //提交表单进行登录
-        FindComent findComent = new FindComent(login.httpClient,1642922,182944,"data.txt");
+        login.post("用户名", "密码");  //提交表单进行登录
+        FindComent findComent = new FindComent(login.httpClient, 1603361, 182944, "data.txt");
         ExecutorService pool = Executors.newFixedThreadPool(4);
         for (int i = 0; i < 4; i++) {
             pool.execute(new FindOutTheBadMan(findComent));
-       }
+        }
         pool.shutdown();
         //findComent.close();
     }
@@ -45,7 +47,12 @@ public class Login {
         PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
         cm.setMaxTotal(200);
         cm.setDefaultMaxPerRoute(20);
-        httpClient = HttpClients.custom().setConnectionManager(cm).build();
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setSocketTimeout(5000)
+                .setConnectTimeout(5000)
+                .setConnectionRequestTimeout(5000)
+                .build();
+        httpClient = HttpClients.custom().setDefaultRequestConfig(requestConfig).setConnectionManager(cm).build();
     }
 
     /**
@@ -69,7 +76,7 @@ public class Login {
             try {
                 HttpEntity entity = httpResponse.getEntity();
                 System.out.print(EntityUtils.toString(entity));
-            }finally {
+            } finally {
                 httpResponse.close();
             }
         } catch (IOException e) {

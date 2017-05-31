@@ -3,19 +3,16 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.util.EntityUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import javax.lang.model.element.NestingKind;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.net.SocketTimeoutException;
 
 /**
  * Created by Claudius on 2017/5/28.
@@ -61,12 +58,14 @@ public class FindComent {
     public String findCommentIdByTid(int tid) {
         HttpGet httpGet = new HttpGet(url + tid);
         httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; rv:6.0.2) Gecko/20100101 Firefox/6.0.2");
+        httpGet.setConfig(requestConfig);
         try {
             CloseableHttpResponse httpResponse = httpClient.execute(httpGet);
             int times = 10;
             //若失败，则最多循环10次get
             while (httpResponse.getStatusLine().getStatusCode() != 200 && times > 0) {
-                httpClient.execute(httpGet);
+                httpResponse.close();
+                httpResponse = httpClient.execute(httpGet);
                 times--;
             }
             try {
@@ -89,6 +88,7 @@ public class FindComent {
             }
 
         } catch (IOException e) {
+            httpGet.releaseConnection();
             e.printStackTrace();
         }
         return null;
@@ -125,7 +125,8 @@ public class FindComent {
             CloseableHttpResponse httpResponse = httpClient.execute(httpGet);
             int times = 10;
             while (httpResponse.getStatusLine().getStatusCode() != 200 && times > 0) {
-                httpClient.execute(httpGet);
+                httpResponse.close();
+                httpResponse =  httpClient.execute(httpGet);
                 times--;
             }
             try {
@@ -151,6 +152,7 @@ public class FindComent {
             }
 
         } catch (IOException e) {
+            httpGet.releaseConnection();
             e.printStackTrace();
         }
         return result;
