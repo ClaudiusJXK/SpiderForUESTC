@@ -30,7 +30,7 @@ public class Login {
 
     public static void main(String[] args) throws  IOException,InterruptedException{
         Login login = new Login();
-        login.post("Claudius", "9876543211");  //提交表单进行登录
+        login.post("用户名", "密码");  //提交表单进行登录
         FindComent findComent = new FindComent(login.httpClient,1642922,182944,"data.txt");
         ExecutorService pool = Executors.newFixedThreadPool(4);
         for (int i = 0; i < 4; i++) {
