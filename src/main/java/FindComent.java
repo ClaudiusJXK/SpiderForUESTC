@@ -9,54 +9,77 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.sql.*;
+import java.util.Properties;
 
 /**
  * Created by Claudius on 2017/5/28.
  */
 public class FindComent {
     private CloseableHttpClient httpClient;
-    private String url;
-    private String commentUrlPre;
-    private String commentUrlSuf;
-    private String commentUrlMid;
-    private PrintWriter out;
     private RequestConfig requestConfig;
+    private Connection connection;
+    private Properties properties;
 
     private int tid;
     private int uid;
 
     /**
-     *
-     * @param httpClient   保存有cookie信息的httpclient
-     * @param tid          从tid开始往后查找
-     * @param uid          需要查找的uid
-     * @param file         保存的文件
+     * @param httpClient 保存有cookie信息的httpclient
+     * @param tid        从tid开始往后查找
+     * @param uid        需要查找的uid
      * @throws IOException
      */
-    public FindComent(CloseableHttpClient httpClient, int tid, int uid , String file) throws IOException {
+    public FindComent(CloseableHttpClient httpClient, int tid, int uid) throws IOException, SQLException {
         this.httpClient = httpClient;
-        this.url = "http://bbs.uestc.edu.cn/forum.php?mod=viewthread&tid=";
-        this.commentUrlPre = "http://bbs.uestc.edu.cn/forum.php?mod=misc&action=commentmore&tid=1&pid=";
-        this.commentUrlMid = "&page=";
-        this.commentUrlSuf = "&inajax=1&ajaxtarget=comment";
-        this.out = new PrintWriter(new BufferedWriter(new FileWriter(file,true)));
         this.tid = tid;
         this.uid = uid;
         this.requestConfig = RequestConfig.custom().setSocketTimeout(5000).setConnectTimeout(5000).build();
+        this.connection = getConnection();
     }
 
+    /**
+     * 默认构造函数
+     */
+    public FindComent() {
+    }
+
+    /**
+     * 加载属性文件，并返回connection
+     *
+     * @return
+     * @throws IOException
+     * @throws SQLException
+     */
+    public Connection getConnection() throws IOException, SQLException {
+        this.properties = new Properties();
+        try (InputStream in = Files.newInputStream(Paths.get("props.properties"))) {
+            properties.load(in);
+        }
+        String drivers = properties.getProperty("jdbc.drivers");
+        //加载mysql driver
+        if (drivers != null)
+            try {
+                Class.forName("com.mysql.jdbc.Driver");
+            } catch (ClassNotFoundException e) {
+                System.out.println("找不到驱动程序类 ，加载驱动失败！");
+                e.printStackTrace();
+            }
+        return DriverManager.getConnection(properties.getProperty("databaseUrl"), properties.getProperty("username"),
+                properties.getProperty("password"));
+    }
 
     /**
      * 根据帖子tid，找到该主题帖的commentId
+     *
      * @param tid
      * @return
      */
     public String findCommentIdByTid(int tid) {
-        HttpGet httpGet = new HttpGet(url + tid);
+        HttpGet httpGet = new HttpGet(properties.getProperty("url") + tid);
         httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; rv:6.0.2) Gecko/20100101 Firefox/6.0.2");
         httpGet.setConfig(requestConfig);
         try {
@@ -73,12 +96,12 @@ public class FindComent {
                 String response = EntityUtils.toString(httpEntity);
                 Document document = Jsoup.parse(response);
                 Elements elements = document.getElementsByClass("authicn");
-                if (elements.size() != 0){
+                if (elements.size() != 0) {
                     Element element = elements.get(0);
                     if (element != null) {
                         String id = element.attr("id");
-                        if ( id != null)
-                            return  id.substring(8);
+                        if (id != null)
+                            return id.substring(8);
                     }
 
                 }
@@ -97,6 +120,7 @@ public class FindComent {
 
     /**
      * 如果有多页点评，则循环
+     *
      * @param tid
      */
     public void findLoop(int tid) {
@@ -104,20 +128,22 @@ public class FindComent {
         String commentId = findCommentIdByTid(tid);
         if (commentId == null)
             return;
-        while (findCommentByUid( commentId,tid ,page))
+        while (findCommentByUid(commentId, tid, page))
             page++;
         System.out.println(tid);
     }
 
     /**
      * 如果返回true，则还有下一页点评。
+     *
      * @param tid
-     * @param page   第几页点评
+     * @param page 第几页点评
      * @return
      */
-    public boolean findCommentByUid( String commentId ,int tid ,int page ) {
+    public boolean findCommentByUid(String commentId, int tid, int page) {
         boolean result = false;
-        String commentUrl = commentUrlPre + commentId + commentUrlMid + page + commentUrlSuf;
+        String commentUrl = properties.getProperty("commentUrlPre") + commentId + properties.getProperty("commentUrlMid") +
+                page + properties.getProperty("commentUrlSuf");
         HttpGet httpGet = new HttpGet(commentUrl);
         httpGet.setConfig(requestConfig);
         try {
@@ -126,7 +152,7 @@ public class FindComent {
             int times = 10;
             while (httpResponse.getStatusLine().getStatusCode() != 200 && times > 0) {
                 httpResponse.close();
-                httpResponse =  httpClient.execute(httpGet);
+                httpResponse = httpClient.execute(httpGet);
                 times--;
             }
             try {
@@ -141,9 +167,9 @@ public class FindComent {
                 Document document = Jsoup.parse(response);
                 Elements elements = document.getElementsByClass("psti");
                 for (Element element : elements) {
-                    if (element.toString().contains(uid + "")){
+                    if (element.toString().contains(uid + "")) {
                         System.out.print(element.text());
-                        output(url + tid + "   " + element.text());
+                        insert(tid,element.text());
                     }
 
                 }
@@ -158,22 +184,34 @@ public class FindComent {
         return result;
     }
 
-    //使用同一个printer进行存储。
-    public synchronized void output(String text) {
-        out.println(text);
-        out.flush();
+    /**
+     * 持久化到数据库中
+     * @param tid
+     * @param text
+     */
+    public void insert(int tid ,String text) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("insert into comment  VALUES  (?,?)");
+            try {
+                statement.setInt(1,tid);
+                statement.setString(2,text);
+                statement.executeUpdate();
+
+            }finally {
+                statement.close();
+            }
+        }catch (SQLException e){
+            e.printStackTrace();
+            System.err.println(tid + text);
+        }
     }
 
     public synchronized int reduce() {
         this.tid--;
-        return  this.tid + 1;
+        return this.tid + 1;
     }
 
-    public int getTid(){
-        return  tid;
-    }
-
-    public void close(){
-        out.close();
+    public int getTid() {
+        return tid;
     }
 }

@@ -18,6 +18,7 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -29,16 +30,15 @@ import java.util.concurrent.Executors;
 public class Login {
     private CloseableHttpClient httpClient;
 
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) throws IOException, InterruptedException ,SQLException {
         Login login = new Login();
-        login.post("用户名", "密码");  //提交表单进行登录
-        FindComent findComent = new FindComent(login.httpClient, 1603361, 182944, "data.txt");
+        login.post("Claudius", "9876543211");  //提交表单进行登录
+        FindComent findComent = new FindComent(login.httpClient, 1653361, 182944);
         ExecutorService pool = Executors.newFixedThreadPool(4);
         for (int i = 0; i < 4; i++) {
             pool.execute(new FindOutTheBadMan(findComent));
         }
         pool.shutdown();
-        //findComent.close();
     }
 
 
